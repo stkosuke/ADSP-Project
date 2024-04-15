@@ -15,5 +15,6 @@ When preparing for your project presentation, please discuss your entire project
 1. The situation, its data, and the questions to be answered
 2. Your analysis and the answers to the questions
 3. A summary of getting the data and preparing it for analysis
-4. A summary of the various obstacles you faced during the project and how you overcame them  
+4. A summary of the various obstacles you faced during the project and how you overcame them
+  
 Prepare a 20-minute presentation to present to the whole class on the date shown above. You will be using the power point slides for presentation. You will be presenting just the Jupyter notebooks. During the presentation, all group members should present for an equal amount of time.
