@@ -1,0 +1,590 @@
+---
+title: "Analysis"
+output: 
+  html_document:
+    toc: true
+    theme: united
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggthemes)
+library(zoo)
+library(forecast)
+library(prophet)
+library(keras)
+library(tseries)
+Sys.setlocale(locale = "en-us")
+use_python("D:/software/anaconda/envs/tf2")
+Sys.setenv(TF_CPP_MIN_LOG_LEVEL = "1")
+```
+
+# Data Preprocession and EDA
+
+```{r}
+data <- read.csv("salesdaily.csv")
+
+data %>% 
+  rename("date" = "datum") %>% 
+  mutate(date = as.Date(date, format = "%m/%d/%Y")) %>% 
+  mutate(Month.Name = month.name[Month]) -> data
+
+data %>% 
+  select(date, Year, Month, Month.Name, Hour, Weekday.Name, everything()) %>% 
+  select(-Hour) -> data.sub
+
+data.sub %>% 
+  mutate(Weekday.Name = factor(Weekday.Name, 
+                               levels = c("Monday", "Tuesday", "Wednesday", 
+                                          "Thursday", "Friday", "Saturday", 
+                                          "Sunday"))) -> data.sub
+
+data.sub %>% 
+  mutate(Month.Name = factor(Month.Name, levels = month.name)) -> data.sub
+```
+
+Comparison of Monthly Sales Across Drug Categories:
+
+```{r, fig.width=8, fig.height=5}
+data.sub %>% 
+  gather(key = "key", value = "value", -date, -Year, -Month, 
+         -Weekday.Name, -Month.Name) %>% 
+  ggplot() + 
+  geom_boxplot(aes(x = Month.Name, y = value)) + 
+  facet_wrap(~key, scales = "free_y", ncol = 2) + 
+  theme_pander() + 
+  theme(legend.position = "none") + 
+  xlab("Month") + 
+  ylab("Sales") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ggtitle("Comparison of Monthly Sales Across Drug Categories")
+```
+
+Daily Sales Comparison Across Drug Categories by Day of the Week:
+
+```{r, fig.width=8, fig.height=5}
+data.sub %>% 
+  gather(key = "key", value = "value", -date, -Year, -Month, 
+         -Month.Name, -Weekday.Name) %>% 
+  ggplot() + 
+  geom_boxplot(aes(x = Weekday.Name, y = value)) + 
+  facet_wrap(~key, scales = "free_y", ncol = 2) + 
+  theme_pander() + 
+  theme(legend.position = "none") + 
+  xlab("Day") + 
+  ylab("Sales") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ggtitle("Daily Sales Comparison Across Drug Categories by Day of the Week")
+```
+
+```{r}
+MA <- function(x, width, type = "mean") {
+  if (type == "mean"){
+    return (rollapply(x, width = width, FUN = mean, align = "right", fill = NA))
+  } else if (type == "sd"){
+    return (rollapply(x, width = width, FUN = sd, align = "right", fill = NA))
+  }
+}
+```
+
+
+```{r, warning=FALSE, fig.width=8, fig.height=5}
+data.sub %>% 
+  gather(key = "key", value = "value", -date, -Year, -Month, 
+         -Month.Name, -Weekday.Name) %>% 
+  group_by(key) %>% 
+  mutate(value_ma_30 = MA(value, 30, type = "mean")) %>% 
+  mutate(value_ma_365 = MA(value, 365, type = "mean")) %>% 
+  mutate(value_ma_30_sd = MA(value, 30, type = "sd")) %>% 
+  gather(key = "data_type", value = "value", -date, -Year, -Month, 
+         -Month.Name, -Weekday.Name, -key) %>% 
+  mutate(data_type = case_when(data_type == "value" ~ "Daily Sales", 
+                               data_type == "value_ma_30" ~ "30-Days Rolling Mean", 
+                               data_type == "value_ma_30_sd" ~ "30-Days Rolling Std", 
+                               data_type == "value_ma_365" ~ "365-Days Rolling Mean")) %>% 
+  mutate(data_type = factor(data_type, levels = c("Daily Sales", "30-Days Rolling Mean", 
+                                                  "365-Days Rolling Mean", "30-Days Rolling Std"))) %>% 
+  ggplot() + 
+  geom_line(aes(x = date, y = value, color = data_type, 
+                linewidth = data_type, alpha = data_type)) + 
+  scale_color_manual(breaks = c("Daily Sales", "30-Days Rolling Mean", 
+                                "365-Days Rolling Mean", "30-Days Rolling Std"), 
+                     values = c("#0057e7", "orange", "black", "gray")) + 
+  scale_linewidth_manual(breaks = c("Daily Sales", "30-Days Rolling Mean", 
+                                 "365-Days Rolling Mean", "30-Days Rolling Std"), 
+                         values = c(0.5, 1, 1, 1)) + 
+  scale_alpha_manual(breaks = c("Daily Sales", "30-Days Rolling Mean", 
+                                "365-Days Rolling Mean", "30-Days Rolling Std"), 
+                     values = c(0.8, 1, 1, 1)) + 
+  facet_wrap(~key, scales = "free_y", ncol = 2) + 
+  theme_pander() + 
+  theme(legend.position = "bottom") + 
+  ylab("Sales") + 
+  xlab("Date") + 
+  labs(color = "", linewidth = "", alpha = "") + 
+  ggtitle("Time Series Plot for Drug Sales Across Different Categories")
+```
+
+```{r, warning=FALSE, fig.width=8, fig.height=5}
+data.sub %>% 
+  gather(key = "key", value = "value", -date, -Year, -Month, 
+         -Month.Name, -Weekday.Name) %>% 
+  group_by(key) %>% 
+  mutate(value_ma_365 = MA(value, 365, type = "mean")) %>% 
+  na.omit() %>% 
+  ggplot() + 
+  geom_line(aes(x = date, y = value_ma_365)) + 
+  facet_wrap(~key, scales = "free_y", ncol = 2) + 
+  theme_pander() + 
+  theme(legend.position = "bottom") + 
+  ylab("Sales") + 
+  xlab("Date") + 
+  ggtitle("Trends in Drug Sales Across Different Categories (365-Days Rolling Mean)")
+```
+
+Decompose "M01AB" into trend, seasonal, and random component.
+
+```{r}
+res <- decompose(ts(data.sub$M01AB, frequency = 365))
+plot(res)
+```
+
+## Stationary Analysis
+
+```{r}
+data.sub %>% 
+  gather(key = "key", value = "value", -date, -Year, -Month, 
+         -Month.Name, -Weekday.Name) -> data.sub.lng
+```
+
+### ACF
+
+Original Time Series
+
+```{r}
+data.sub.lng$key %>% unique() %>% matrix(ncol = 1) %>% 
+  apply(1, function(x){
+    data.sub[[x]] %>% 
+      ggAcf() + 
+      ggtitle(x)
+  }) -> plot.acf.list
+ggpubr::ggarrange(plotlist = plot.acf.list, ncol = 3, nrow = 3)
+```
+
+
+### PACF
+
+```{r}
+data.sub.lng$key %>% unique() %>% matrix(ncol = 1) %>% 
+  apply(1, function(x){
+    data.sub[[x]] %>% 
+      ggPacf() + 
+      ggtitle(x)
+  }) -> plot.pacf.list
+ggpubr::ggarrange(plotlist = plot.pacf.list, ncol = 3, nrow = 3)
+```
+
+
+### ADF Test
+
+```{r, warning=FALSE}
+data.sub.lng$key %>% unique() %>% matrix(ncol = 1) %>% 
+  apply(1, function(x){
+    sprintf("Series: %s", x) %>% cat()
+    data.sub[[x]] %>% tseries::adf.test() %>% print()
+  }) -> res
+```
+
+
+# Forecasting
+
+```{r}
+data <- read.csv("salesweekly.csv")
+data %>% 
+  rename("date" = "datum") %>% 
+  mutate(date = as.Date(date, format = "%m/%d/%Y")) %>% 
+  gather(key = "Category", value = "Sales", -date) -> data.lng
+# Number of Days to Test
+n.te <- 50
+data.lng %>% 
+  group_by(Category) %>% 
+  mutate(index = 1:n()) %>% 
+  mutate(Period = ifelse(index > n()-n.te, "Test", "Train")) %>% 
+  select(-index) -> data.lng
+```
+
+```{r}
+MAPE <- function(Sales, Sales_Pred){
+  Sales.sub <- Sales[Sales != 0]
+  Sales_Pred.sub <- Sales_Pred[Sales != 0]
+  mean(abs(Sales.sub - Sales_Pred.sub) / Sales.sub) %>% round(4)
+}
+
+MSE <- function(Sales, Sales_Pred){
+  mean((Sales - Sales_Pred) ** 2) %>% round(4)
+}
+
+get_pred <- function(data.lng, pred_function_list, function_name.curr){
+  data.lng %>% 
+    mutate(`1` = pred_function_list[[function_name.curr]](Sales, Period, 1, date)) %>% 
+    mutate(`24` = pred_function_list[[function_name.curr]](Sales, Period, 24, date)) %>% 
+    filter(Period == "Test") %>% 
+    gather(key = "Num_Pred", value = "Sales_Pred", -date, -Category, -Sales, -Period) %>% 
+    mutate(Sales_Pred = Sales_Pred %>% round(2)) %>% 
+    mutate(Sales = Sales %>% round(2)) %>% 
+    mutate(Num_Pred = as.numeric(Num_Pred)) %>% 
+    group_by(Category, Num_Pred) %>% 
+    mutate(MAPE = MAPE(Sales, Sales_Pred)) %>% 
+    mutate(MSE = MSE(Sales, Sales_Pred)) %>% 
+    mutate(Category_Detail = sprintf("%s (MSE: %.2f; MAPE: %.2f%%)", Category, MSE, MAPE * 100)) %>% 
+    select(date, Category, Category_Detail, Num_Pred, Sales, Sales_Pred, MAPE, MSE)
+}
+
+plot_pred <- function(data.lng.curr, Method, Steps){
+  data.lng.curr %>% 
+    filter(Num_Pred == Steps) %>% 
+    ggplot() + 
+    geom_line(aes(x = date, y = Sales)) + 
+    geom_point(aes(x = date, y = Sales)) + 
+    geom_line(aes(x = date, y = Sales_Pred), color = "darkred", linewidth = 0.8) + 
+    facet_wrap(~Category_Detail, scales = "free_y", ncol = 2) + 
+    theme_pander() + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+    xlab("Date") + 
+    ggtitle(sprintf("Prediction vs Real (Method: %s; Steps to Predict: %2d)", Method, Steps))
+}
+```
+
+```{r}
+function_name_vec <- c("pred.naive", "pred.average", "pred.snaive", 
+                       "pred.arima", "pred.prophet", "pred.lstm")
+names(function_name_vec) <- c("Naive", "Average", "Seasonal Naive", 
+                              "ARIMA", "Prophet", "LSTM")
+pred_function_list <- list()
+pred_results_list <- list()
+```
+
+```{r load saved prediction results}
+pred_results_list <- readRDS("pred_results_list.RDS")
+```
+
+## Baseline Models
+
+### Naive
+
+```{r}
+pred.naive <- function(Sales, Period, n.pred, date){
+  x.tr <- Sales[Period == "Train"]
+  x.te <- Sales[Period == "Test"]
+  x.all <- c(x.tr, x.te)
+  x.te.pred <- rep(NA, length(x.te))
+  x.history <- x.tr
+  idx <- length(x.tr) - n.pred + 1
+  for (i in 1:length(x.te)){
+    x.te.pred[i] <- x.history[idx]
+    idx <- idx + 1
+    x.history[idx] <- x.all[idx]
+  }
+  c(rep(NA, length(x.tr)), x.te.pred)
+}
+```
+
+```{r, fig.width=8, fig.height=5}
+Method <- "Naive"
+function_name.curr <- function_name_vec[Method]
+pred_function_list[[function_name.curr]] <- eval(parse(text=function_name.curr))
+get_pred(data.lng, pred_function_list, function_name.curr) -> data.lng.curr
+pred_results_list[[Method]] <- data.lng.curr
+plot_pred(data.lng.curr, Method, Steps = 1)
+plot_pred(data.lng.curr, Method, Steps = 24)
+```
+
+### Average
+
+```{r}
+pred.average <- function(Sales, Period, n.pred, date){
+  x.tr <- Sales[Period == "Train"]
+  x.te <- Sales[Period == "Test"]
+  x.all <- c(x.tr, x.te)
+  x.te.pred <- rep(NA, length(x.te))
+  x.history <- x.tr
+  idx <- length(x.tr) - n.pred + 1
+  for (i in 1:length(x.te)){
+    x.te.pred[i] <- x.history %>% mean()
+    idx <- idx + 1
+    x.history[idx] <- x.all[idx]
+  }
+  c(rep(NA, length(x.tr)), x.te.pred)
+}
+```
+
+```{r, fig.width=8, fig.height=5}
+Method <- "Average"
+function_name.curr <- function_name_vec[Method]
+pred_function_list[[function_name.curr]] <- eval(parse(text=function_name.curr))
+get_pred(data.lng, pred_function_list, function_name.curr) -> data.lng.curr
+pred_results_list[[Method]] <- data.lng.curr
+plot_pred(data.lng.curr, Method, Steps = 1)
+plot_pred(data.lng.curr, Method, Steps = 24)
+```
+
+### Seasonal Naive
+
+```{r}
+pred.snaive <- function(Sales, Period, n.pred, date){
+  x.tr <- Sales[Period == "Train"]
+  x.te <- Sales[Period == "Test"]
+  x.all <- c(x.tr, x.te)
+  x.te.pred <- rep(NA, length(x.te))
+  x.history <- x.tr
+  freq <- findfrequency(x.tr)
+  period.all <- rep(1:freq, length.out = length(x.all))
+  idx.known <- length(x.tr) - n.pred + 1
+  idx.pred <- length(x.tr) + 1
+  for (i in 1:length(x.te)){
+    position <- which(period.all[1:idx.known] == period.all[idx.pred]) %>% max()
+    x.te.pred[i] <- x.history[position]
+    idx.known <- idx.known + 1
+    idx.pred <- idx.pred + 1
+    x.history[idx.known] <- x.all[idx.known]
+  }
+  c(rep(NA, length(x.tr)), x.te.pred)
+}
+```
+
+```{r, fig.width=8, fig.height=5}
+Method <- "Seasonal Naive"
+function_name.curr <- function_name_vec[Method]
+pred_function_list[[function_name.curr]] <- eval(parse(text=function_name.curr))
+get_pred(data.lng, pred_function_list, function_name.curr) -> data.lng.curr
+pred_results_list[[Method]] <- data.lng.curr
+plot_pred(data.lng.curr, Method, Steps = 1)
+plot_pred(data.lng.curr, Method, Steps = 24)
+```
+
+## ARIMA
+
+```{r}
+pred.arima <- function(Sales, Period, n.pred, date){
+  x.tr <- Sales[Period == "Train"]
+  x.te <- Sales[Period == "Test"]
+  x.all <- c(x.tr, x.te)
+  x.te.pred <- rep(NA, length(x.te))
+  idx.known <- length(x.tr) - n.pred + 1
+  idx.pred <- length(x.tr) + 1
+  x.history <- x.tr[1:idx.known]
+  model.arima <- auto.arima(x.history)
+  for (i in 1:length(x.te)){
+    refit <- Arima(x.history, model = model.arima)
+    x.te.pred[i] <- forecast(refit, h = n.pred)$mean[n.pred]
+    idx.known <- idx.known + 1
+    idx.pred <- idx.pred + 1
+    x.history[idx.known] <- x.all[idx.known]
+  }
+  c(rep(NA, length(x.tr)), x.te.pred)
+}
+```
+
+```{r, eval=FALSE}
+Method <- "ARIMA"
+function_name.curr <- function_name_vec[Method]
+pred_function_list[[function_name.curr]] <- eval(parse(text=function_name.curr))
+get_pred(data.lng, pred_function_list, function_name.curr) -> data.lng.curr
+pred_results_list[[Method]] <- data.lng.curr
+```
+
+```{r, fig.width=8, fig.height=5}
+Method <- "ARIMA"
+data.lng.curr <- pred_results_list[[Method]]
+plot_pred(data.lng.curr, Method, Steps = 1)
+plot_pred(data.lng.curr, Method, Steps = 24)
+```
+
+## Prophet
+
+```{r}
+pred.prophet <- function(Sales, Period, n.pred, date){
+  x.tr <- Sales[Period == "Train"]
+  x.te <- Sales[Period == "Test"]
+  x.all <- c(x.tr, x.te)
+  x.te.pred <- rep(NA, length(x.te))
+  idx.known <- length(x.tr) - n.pred + 1
+  idx.pred <- length(x.tr) + 1
+  x.history <- x.tr[1:idx.known]
+  for (i in 1:length(x.te)){
+    model.prophet <- prophet(df = data.frame(ds = date[1:idx.known], y = x.history), 
+                             weekly.seasonality = FALSE, 
+                             daily.seasonality = FALSE)
+    df.future <- make_future_dataframe(model.prophet, periods = n.pred) %>% tail(n.pred)
+    res <- predict(model.prophet, df.future)
+    x.te.pred[i] <- res$yhat[n.pred]
+    idx.known <- idx.known + 1
+    idx.pred <- idx.pred + 1
+    x.history[idx.known] <- x.all[idx.known]
+  }
+  c(rep(NA, length(x.tr)), x.te.pred)
+}
+```
+
+```{r, eval=FALSE}
+Method <- "Prophet"
+function_name.curr <- function_name_vec[Method]
+pred_function_list[[function_name.curr]] <- eval(parse(text=function_name.curr))
+get_pred(data.lng, pred_function_list, function_name.curr) -> data.lng.curr
+pred_results_list[[Method]] <- data.lng.curr
+```
+
+```{r, fig.width=8, fig.height=5}
+Method <- "Prophet"
+data.lng.curr <- pred_results_list[[Method]]
+plot_pred(data.lng.curr, Method, Steps = 1)
+plot_pred(data.lng.curr, Method, Steps = 24)
+```
+
+## LSTM
+
+```{r}
+pred.lstm <- function(Sales, Period, n.pred, date){
+  x.tr <- Sales[Period == "Train"]
+  x.te <- Sales[Period == "Test"]
+  x.all <- c(x.tr, x.te)
+  x.te.pred <- rep(NA, length(x.te))
+  idx.known <- length(x.tr) - n.pred + 1
+  idx.pred <- length(x.tr) + 1
+  x.history <- x.tr[1:idx.known]
+  n.features <- 30
+  ns <- length(x.all) - n.pred - n.features + 1
+  X <- array(NA, c(ns, 1, n.features))
+  y <- rep(NA, ns)
+  for (i in 1:ns){
+    X[i,1,] <- x.all[i:(i+n.features-1)]
+    y[i] <- x.all[(i+n.features-1)+n.pred]
+  }
+  idx.te <- (ns - length(x.te) + 1):ns
+  idx.tr <- 1:(ns - length(x.te))
+  n.te <- length(idx.te)
+  n.tr <- length(idx.tr)
+  X.tr <- X[idx.tr,,] %>% array(c(n.tr, 1, n.features))
+  y.tr <- y[idx.tr]
+  X.te <- X[idx.te,,] %>% array(c(n.te, 1, n.features))
+  y.te <- y[idx.te]
+  
+  # Define LSTM model
+  model <- keras_model_sequential() %>%
+    layer_lstm(units = 100, activation = "relu", 
+               input_shape = c(1, n.features)) %>%
+    layer_dense(units = 1)
+  
+  # Compile the model
+  model %>% compile(
+    optimizer = "adam",
+    loss = "mse"
+  )
+  
+  # Train the model
+  history <- model %>% fit(
+    X.tr, y.tr,
+    epochs = 20,
+    batch_size = 32, 
+    verbose = F
+  )
+  
+  x.te.pred <- predict(model, X.te, verbose = F) %>% as.numeric()
+  c(rep(NA, length(x.tr)), x.te.pred)
+}
+```
+
+
+```{r, eval=FALSE}
+Method <- "LSTM"
+function_name.curr <- function_name_vec[Method]
+pred_function_list[[function_name.curr]] <- eval(parse(text=function_name.curr))
+get_pred(data.lng, pred_function_list, function_name.curr) -> data.lng.curr
+pred_results_list[[Method]] <- data.lng.curr
+```
+
+
+```{r, fig.width=8, fig.height=5}
+Method <- "LSTM"
+data.lng.curr <- pred_results_list[[Method]]
+plot_pred(data.lng.curr, Method, Steps = 1)
+plot_pred(data.lng.curr, Method, Steps = 24)
+```
+
+# Model Comparison
+
+```{r}
+pred_results_list %>% 
+  lapply(function(i){
+    Method <- names(pred_results_list)[parent.frame()$i]
+    df <- pred_results_list[[Method]]
+    df %>% 
+      group_by(Category, Num_Pred) %>% 
+      summarise(MAPE = MAPE[1], 
+                MSE = MSE[1], 
+                .groups = "drop") %>% 
+      mutate(Method = Method)
+  }) -> res
+res.df <- do.call(bind_rows, res)
+```
+
+## Prediction Step: 1; Metric: MAPE;
+
+```{r}
+res.df %>% 
+  filter(Num_Pred == 1) %>% 
+  select(Category, MAPE, Method) %>% 
+  spread(key = "Category", value = "MAPE") %>% 
+  mutate(Method = factor(Method, levels = c("Naive", "Average", "Seasonal Naive", 
+                                            "ARIMA", "Prophet", "LSTM"))) %>% 
+  arrange(Method) %>% 
+  knitr::kable()
+```
+
+## Prediction Step: 1; Metric: MSE;
+
+```{r}
+res.df %>% 
+  filter(Num_Pred == 1) %>% 
+  select(Category, MSE, Method) %>% 
+  spread(key = "Category", value = "MSE") %>% 
+  mutate(Method = factor(Method, levels = c("Naive", "Average", "Seasonal Naive", 
+                                            "ARIMA", "Prophet", "LSTM"))) %>% 
+  arrange(Method) %>% 
+  knitr::kable()
+```
+
+## Prediction Step: 24; Metric: MAPE;
+
+```{r}
+res.df %>% 
+  filter(Num_Pred == 24) %>% 
+  select(Category, MAPE, Method) %>% 
+  spread(key = "Category", value = "MAPE") %>% 
+  mutate(Method = factor(Method, levels = c("Naive", "Average", "Seasonal Naive", 
+                                            "ARIMA", "Prophet", "LSTM"))) %>% 
+  arrange(Method) %>% 
+  knitr::kable()
+```
+
+## Prediction Step: 24; Metric: MSE;
+
+```{r}
+res.df %>% 
+  filter(Num_Pred == 24) %>% 
+  select(Category, MSE, Method) %>% 
+  spread(key = "Category", value = "MSE") %>% 
+  mutate(Method = factor(Method, levels = c("Naive", "Average", "Seasonal Naive", 
+                                            "ARIMA", "Prophet", "LSTM"))) %>% 
+  arrange(Method) %>% 
+  knitr::kable()
+```
+
+
+
+
+
+
+
+
