@@ -1,0 +1,152 @@
+---
+title: "ADSP Project"
+author: ""
+date: "05/01/2024"
+output: html_document
+header-includes:
+   - \usepackage{bm}
+---
+\pagestyle{plain}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+# library packages
+library(readr)
+library(fpp3)
+
+# load the data
+repo_path <- "https://raw.githubusercontent.com/stkosuke/ADSP-Project/main"
+
+df_drug_hourly <- read_csv(file.path(repo_path, "saleshourly.csv"))
+df_drug_daily <- read_csv(file.path(repo_path, "salesdaily.csv"))
+df_drug_weekly <- read_csv(file.path(repo_path, "salesweekly.csv"))
+df_drug_monthly <- read_csv(file.path(repo_path, "salesmonthly.csv"))
+
+# convert them to tsibble object
+df_drug_hourly <- df_drug_hourly |> 
+  mutate(Datetime = mdy_hm(datum)) |>
+  select(-datum, -Year, -Month, -Hour, -`Weekday Name`) |> 
+  as_tsibble(index = Datetime)　|> 
+  pivot_longer(cols = -Datetime, names_to = "Drug", values_to = "Sales")
+
+df_drug_daily <- df_drug_daily |> 
+  mutate(Date = mdy(datum)) |>
+  select(-datum, -Year, -Month, -Hour, -`Weekday Name`) |> 
+  as_tsibble(index = Date) |> 
+  pivot_longer(cols = -Date, names_to = "Drug", values_to = "Sales")
+
+df_drug_weekly <- df_drug_weekly |> 
+  mutate(Week = yearweek(datum)) |>
+  select(-datum) |> 
+  as_tsibble(index = Week) |> 
+  pivot_longer(cols = -Week, names_to = "Drug", values_to = "Sales")
+
+df_drug_monthly <- df_drug_monthly |> 
+  mutate(Month = yearmonth(datum)) |>
+  select(-datum) |> 
+  as_tsibble(index = Month) |> 
+  pivot_longer(cols = -Month, names_to = "Drug", values_to = "Sales")
+```
+
+## Monthly data
+```{r}
+# time plot
+df_drug_monthly |> 
+  autoplot(Sales) + 
+  labs(title = "Monthly sales of drugs") +
+  facet_wrap(vars(Drug), scales = "free_y", ncol = 2) +
+  theme(legend.position = "none")
+
+# Seasonal subseries plots
+df_drug_monthly |> 
+  gg_subseries(Sales) + 
+  labs(title = "Monthly sales of drugs") +
+  theme(legend.position = "none")
+
+df_drug_monthly |> 
+  ggplot(aes(x = as.factor(month(Month)), y = Sales)) +
+  geom_boxplot() +
+  facet_wrap(~ Drug, scales = "free_y", ncol = 2)
+
+df_drug_monthly |> 
+  gg_season(Sales)
+```
+
+## Weekly data
+```{r}
+# time plot
+df_drug_weekly |> 
+  autoplot(Sales) + 
+  labs(title = "weekly sales of drugs") +
+  facet_wrap(vars(Drug), scales = "free_y", ncol = 2) +
+  theme(legend.position = "none")
+
+# Seasonal subseries plots
+df_drug_weekly |> 
+  gg_subseries(Sales) + 
+  labs(title = "weekly sales of drugs") +
+  theme(legend.position = "none")
+
+df_drug_weekly |> 
+  ggplot(aes(x = as.factor(week(Week)), y = Sales)) +
+  geom_boxplot() +
+  facet_wrap(~ Drug, scales = "free_y", ncol = 1)
+
+df_drug_weekly |> 
+  gg_season(Sales)
+```
+
+## Daily data
+```{r}
+# time plot
+df_drug_daily |> 
+  autoplot(Sales) + 
+  labs(title = "daily sales of drugs") +
+  facet_wrap(vars(Drug), scales = "free_y", ncol = 2) +
+  theme(legend.position = "none")
+
+# Seasonal subseries plots
+df_drug_daily |> 
+  gg_subseries(Sales, period = "week") + 
+  labs(title = "daily sales of drugs") +
+  theme(legend.position = "none")
+
+df_drug_daily |> 
+  ggplot(aes(x = weekdays(Date), y = Sales)) +
+  geom_boxplot() +
+  facet_wrap(~ Drug, scales = "free_y", ncol = 2)
+
+df_drug_daily |> 
+  gg_season(Sales, period = "week")
+
+df_drug_daily |> 
+  gg_season(Sales, period = "month")
+```
+
+
+## Hourly data
+```{r}
+# time plot
+df_drug_hourly |> 
+  autoplot(Sales) + 
+  labs(title = "hourly sales of drugs") +
+  facet_wrap(vars(Drug), scales = "free_y", ncol = 1) +
+  theme(legend.position = "none")
+
+# Seasonal subseries plots
+df_drug_hourly |> 
+  gg_subseries(Sales, period = "day") + 
+  labs(title = "daily sales of drugs") +
+  theme(legend.position = "none")
+
+df_drug_hourly |> 
+  ggplot(aes(x = as.factor(hour(Datetime)), y = Sales)) +
+  geom_boxplot() +
+  facet_wrap(~ Drug, scales = "free_y", ncol = 1)
+
+df_drug_hourly |> 
+  gg_season(Sales, period = "day")
+```
