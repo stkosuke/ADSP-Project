@@ -70,6 +70,9 @@ df_drug_daily |>
 df_drug_daily |> 
   gg_season(Sales, period = "month")
 
+df_drug_daily |> 
+  gg_season(Sales, period = "year")
+
 ### hourly data
 
 # time plot
