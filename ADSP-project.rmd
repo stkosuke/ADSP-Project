@@ -1,7 +1,7 @@
 ---
 title: "ADSP Project"
 author: ""
-date: "05/01/2024"
+date: "05/05/2024"
 output: html_document
 header-includes:
    - \usepackage{bm}
@@ -12,12 +12,14 @@ header-includes:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r, include=FALSE}
+# 1. Loading the Data
+- We use four data sets with different frequencies (from hourly to monthly).
+```{r, include=FALSE, warning=FALSE}
 # library packages
 library(readr)
 library(fpp3)
 
-# load the data
+# load the data from the github repository
 repo_path <- "https://raw.githubusercontent.com/stkosuke/ADSP-Project/main"
 
 df_drug_hourly <- read_csv(file.path(repo_path, "saleshourly.csv"))
@@ -25,7 +27,7 @@ df_drug_daily <- read_csv(file.path(repo_path, "salesdaily.csv"))
 df_drug_weekly <- read_csv(file.path(repo_path, "salesweekly.csv"))
 df_drug_monthly <- read_csv(file.path(repo_path, "salesmonthly.csv"))
 
-# convert them to tsibble object
+# convert them to long tsibble objects
 df_drug_hourly <- df_drug_hourly |> 
   mutate(Datetime = mdy_hm(datum)) |>
   select(-datum, -Year, -Month, -Hour, -`Weekday Name`) |> 
@@ -51,8 +53,14 @@ df_drug_monthly <- df_drug_monthly |>
   pivot_longer(cols = -Month, names_to = "Drug", values_to = "Sales")
 ```
 
-## Monthly data
-```{r}
+# 2. Exploratory Data Analysis
+## a. Comparison among the data sets
+### Monthly data
+The following features can be seen in the figure below.     \par
+- Seasonality of the one-year period can be observed in some drugs (especially in N02BE, R03, and R06).   \par
+- Each drug has different cycles and there are no uniform seasonality.   \par
+- There is a significant drop in sales in January 2017 and October 2019.
+```{r, fig.width=10, fig.height=6}
 # time plot
 df_drug_monthly |> 
   autoplot(Sales) + 
@@ -75,8 +83,11 @@ df_drug_monthly |>
   gg_season(Sales)
 ```
 
-## Weekly data
-```{r}
+### Weekly data
+The following features can be seen in the figure below.   \par
+- Seasonality of the one-year period can also be observed in some drugs (especially in N02BE, R03, and R06) as we can see from the monthly data.  \par
+- There is no significant drop in sales in January 2017 and October 2019, which means there may be some problems with aggregation. \par
+```{r, fig.width=10, fig.height=6}
 # time plot
 df_drug_weekly |> 
   autoplot(Sales) + 
@@ -99,8 +110,10 @@ df_drug_weekly |>
   gg_season(Sales)
 ```
 
-## Daily data
-```{r}
+### Daily data
+The following features can be seen in the figure below.   \par
+- We cannot observe any weekly seasonality from the daily data.
+```{r, fig.width=10, fig.height=6}
 # time plot
 df_drug_daily |> 
   autoplot(Sales) + 
@@ -129,9 +142,10 @@ df_drug_daily |>
   gg_season(Sales, period = "year")
 ```
 
-
-## Hourly data
-```{r}
+### Hourly data
+The following features can be seen in the figure below. \par
+- We can observe daily seasonality from the data however it can be estimated that it just comes from the business hours.
+```{r, fig.width=10, fig.height=6}
 # time plot
 df_drug_hourly |> 
   autoplot(Sales) + 
@@ -153,3 +167,110 @@ df_drug_hourly |>
 df_drug_hourly |> 
   gg_season(Sales, period = "day")
 ```
+
+From the above, it can be estimated that this data has a one-year seasonality, and therefore, weekly or monthly data are candidates for data that can be utilized in the forecast. Since there are some missing data of unknown reason in the monthly data, it is appropriate to use the weekly data in this analysis.
+
+## b. Moving average smoothing and Decomposition
+In the following, weekly data is used to perform Moving average smoothing and STL Decomposition.
+
+```{r, fig.width=10, fig.height=6}
+## Moving average smoothing
+
+# add the 52-MA and 52x2-MA to the data set
+df_drug_weekly <- df_drug_weekly |> 
+  group_by(Drug) |> 
+  mutate(
+    MA_52 = slider::slide_dbl(Sales, mean, 
+                              .before = 25, .after = 26, .complete = TRUE),
+    MA_52x2 = slider::slide_dbl(MA_52, mean, 
+                              .before = 1, .after = 0, .complete = TRUE)
+    ) |> 
+  ungroup()
+
+# plot 52x2-MA
+df_drug_weekly |> 
+  autoplot(Sales) +
+  geom_line(aes(y = MA_52x2, color = "52-week Moving Average"), size =1) +
+  labs(title = "Weekly Sales of Drugs with 52-week Moving Average") +
+  facet_wrap(vars(Drug), scales = "free_y", ncol = 2) +
+  theme(legend.position = "bottom")
+
+```
+<span style="color:red;">Add some implications</span> from the moving average smoothing.
+
+```{r, fig.width=10, fig.height=6}
+## Decomposition
+
+# function for Classical additive decomposition
+CL_dcmp <- function(drug_code) {
+  df_drug_weekly |>
+    filter(Drug == drug_code) |>
+    model(
+      classical_decomposition(Sales, type = "additive")
+    ) |>
+    components() |>
+    autoplot() +
+    ggtitle(paste("Classical additive decomposition for Drug:", drug_code))
+}
+
+# apply Classical additive to all unique drug code
+lapply(unique(df_drug_weekly$Drug), CL_dcmp)
+
+# function for STL decomposition
+STL_dcmp <- function(drug_code) {
+  df_drug_weekly |>
+    filter(Drug == drug_code) |>
+    model(
+      STL(Sales ~ trend(window = 7) +
+            season(window = "periodic"),
+          robust = TRUE)
+    ) |>
+    components() |>
+    autoplot() +
+    ggtitle(paste("STL Decomposition for Drug:", drug_code))
+}
+
+# apply STL decomposition to all unique drug code
+lapply(unique(df_drug_weekly$Drug), STL_dcmp)
+```
+<span style="color:red;">Add some implications</span> from the decomposition.
+
+## c. Stationary Analysis
+In the following, weekly data is used.
+
+```{r, fig.width=10, fig.height=6}
+## ACF and PACF
+# ACF plot
+df_drug_weekly |> 
+  ACF(Sales) |> 
+  autoplot() +
+  facet_wrap(vars(Drug), scales = "free_y", ncol = 2) 
+
+# PACF plot
+df_drug_weekly |> 
+  PACF(Sales) |> 
+  autoplot() +
+  facet_wrap(vars(Drug), scales = "free_y", ncol = 2) 
+```
+<span style="color:red;">Add some implications</span> .
+
+## d, ADF test
+```{r, warning=FALSE}
+# function for ADF test
+ADF_test <- function(drug_code) {
+  print(drug_code)
+  df_drug_weekly |>
+    filter(Drug == drug_code) |>
+    pull(Sales) |> 
+    tseries::adf.test() |> 
+    print()
+}
+
+# apply ADF test to all unique drug code
+for (drug_code in unique(df_drug_weekly$Drug)) {
+  ADF_test(drug_code)
+}
+```
+<span style="color:red;">Add some implications</span> .
+
+# 3. Forecasting
