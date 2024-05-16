@@ -1,20 +1,7 @@
----
-title: "ADSP Project"
-author: ""
-date: "05/05/2024"
-output: html_document
-header-includes:
-   - \usepackage{bm}
----
-\pagestyle{plain}
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 # 1. Loading the Data
-- We use four data sets with different frequencies (from hourly to monthly).
-```{r, include=FALSE, warning=FALSE}
+
+# We use four data sets with different frequencies (from hourly to monthly).
+
 # library packages
 library(readr)
 library(fpp3)
@@ -60,16 +47,16 @@ df_drug_monthly_fixed <- df_drug_daily |>
   group_by(Month, Drug) |> 
   summarise(Sales = sum(Sales, na.rm = TRUE), .groups = 'drop') |> 
   as_tsibble(index = Month, key = Drug) 
-```
+
 
 # 2. Exploratory Data Analysis
 ## a. Comparison among the data sets
 ### Monthly data
-The following features can be seen in the figure below.     \par
-- Seasonality of the one-year period can be observed in some drugs (especially in N02BE, R03, and R06).   \par
-- Each drug has different cycles and there are no uniform seasonality.   \par
-- There is a significant drop in sales in January 2017 and October 2019.
-```{r, fig.width=10, fig.height=6}
+# The following features can be seen in the figure below.     \par
+# - Seasonality of the one-year period can be observed in some drugs (especially in N02BE, R03, and R06).   \par
+# - Each drug has different cycles and there are no uniform seasonality.   \par
+# - There is a significant drop in sales in January 2017 and October 2019.
+
 # time plot
 df_drug_monthly_fixed |> 
   autoplot(Sales) + 
@@ -90,13 +77,12 @@ df_drug_monthly_fixed |>
 
 df_drug_monthly_fixed |> 
   gg_season(Sales)
-```
 
 ### Weekly data
-The following features can be seen in the figure below.   \par
-- Seasonality of the one-year period can also be observed in some drugs (especially in N02BE, R03, and R06) as we can see from the monthly data.  \par
-- There is no significant drop in sales in January 2017 and October 2019, which means there may be some problems with aggregation. \par
-```{r, fig.width=10, fig.height=6}
+# The following features can be seen in the figure below.   \par
+# - Seasonality of the one-year period can also be observed in some drugs (especially in N02BE, R03, and R06) as we can see from the monthly data.  \par
+# - There is no significant drop in sales in January 2017 and October 2019, which means there may be some problems with aggregation. \par
+
 # time plot
 df_drug_weekly |> 
   autoplot(Sales) + 
@@ -117,12 +103,11 @@ df_drug_weekly |>
 
 df_drug_weekly |> 
   gg_season(Sales)
-```
 
 ### Daily data
-The following features can be seen in the figure below.   \par
-- We cannot observe any weekly seasonality from the daily data.
-```{r, fig.width=10, fig.height=6}
+# The following features can be seen in the figure below.   \par
+# - We cannot observe any weekly seasonality from the daily data.
+
 # time plot
 df_drug_daily |> 
   autoplot(Sales) + 
@@ -149,12 +134,11 @@ df_drug_daily |>
 
 df_drug_daily |> 
   gg_season(Sales, period = "year")
-```
 
 ### Hourly data
-The following features can be seen in the figure below. \par
-- We can observe daily seasonality from the data however it can be estimated that it just comes from the business hours.
-```{r, fig.width=10, fig.height=6}
+# The following features can be seen in the figure below. \par
+# - We can observe daily seasonality from the data however it can be estimated that it just comes from the business hours.
+
 # time plot
 df_drug_hourly |> 
   autoplot(Sales) + 
@@ -175,14 +159,13 @@ df_drug_hourly |>
 
 df_drug_hourly |> 
   gg_season(Sales, period = "day")
-```
 
-From the above, it can be estimated that this data has a one-year seasonality, and therefore, weekly or monthly data are candidates for data that can be utilized in the forecast. Since there are some missing data of unknown reason in the monthly data, it is appropriate to use the weekly data in this analysis.
+
+# From the above, it can be estimated that this data has a one-year seasonality, and therefore, weekly or monthly data are candidates for data that can be utilized in the forecast. Since there are some missing data of unknown reason in the monthly data, it is appropriate to use the weekly data in this analysis.
 
 ## b. Moving average smoothing and Decomposition
-In the following, weekly data is used to perform Moving average smoothing and STL Decomposition.
+# In the following, weekly data is used to perform Moving average smoothing and STL Decomposition.
 
-```{r, fig.width=10, fig.height=6}
 ## Moving average smoothing
 
 # add the 52-MA and 52x2-MA to the data set
@@ -192,8 +175,8 @@ df_drug_weekly <- df_drug_weekly |>
     MA_52 = slider::slide_dbl(Sales, mean, 
                               .before = 25, .after = 26, .complete = TRUE),
     MA_52x2 = slider::slide_dbl(MA_52, mean, 
-                              .before = 1, .after = 0, .complete = TRUE)
-    ) |> 
+                                .before = 1, .after = 0, .complete = TRUE)
+  ) |> 
   ungroup()
 
 # plot 52x2-MA
@@ -204,10 +187,9 @@ df_drug_weekly |>
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2) +
   theme(legend.position = "bottom")
 
-```
-<span style="color:red;">Add some implications</span> from the moving average smoothing.
 
-```{r, fig.width=10, fig.height=6}
+# <span style="color:red;">Add some implications</span> from the moving average smoothing.
+
 ## Decomposition
 
 # function for Classical additive decomposition
@@ -241,13 +223,12 @@ STL_dcmp <- function(drug_code) {
 
 # apply STL decomposition to all unique drug code
 lapply(unique(df_drug_weekly$Drug), STL_dcmp)
-```
-<span style="color:red;">Add some implications</span> from the decomposition.
+
+# <span style="color:red;">Add some implications</span> from the decomposition.
 
 ## c. Stationary Analysis
-In the following, weekly data is used.
+# In the following, weekly data is used.
 
-```{r, fig.width=10, fig.height=6}
 ## ACF and PACF
 # ACF plot
 df_drug_weekly |> 
@@ -260,11 +241,11 @@ df_drug_weekly |>
   PACF(Sales) |> 
   autoplot() +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2) 
-```
-<span style="color:red;">Add some implications</span> .
+
+# <span style="color:red;">Add some implications</span> .
 
 ## d. ADF test
-```{r, warning=FALSE}
+
 # function for ADF test
 ADF_test <- function(drug_code) {
   print(drug_code)
@@ -279,11 +260,11 @@ ADF_test <- function(drug_code) {
 for (drug_code in unique(df_drug_weekly$Drug)) {
   ADF_test(drug_code)
 }
-```
-<span style="color:red;">Add some implications</span> .
+
+# <span style="color:red;">Add some implications</span> .
 
 # 3. Forecasting
-```{r, warning=FALSE}
+
 ## Forecasting
 # use 52 weeks as a test set  
 train <- df_drug_weekly |>
@@ -291,11 +272,11 @@ train <- df_drug_weekly |>
 
 test <- df_drug_weekly |>
   filter_index("2018 W42" ~ "2019 W41")
-```
+
 
 ## a. Fit the models
 ### 1. Baseline Models (Mean, Naïve and Seasonal naïve)
-```{r, fig.width=10, fig.height=6}
+
 # Fit the models
 base_fit <- train |>
   model(
@@ -336,10 +317,10 @@ base_mape <- base_ac |>
   pivot_wider(names_from = Drug, values_from = MAPE)
 
 base_mape
-```
+
 
 ### 2. ARIMA Models 
-```{r, fig.width=10, fig.height=6}
+
 ## ARIMA Models
 
 # Fit the models
@@ -380,10 +361,9 @@ arima_mape <- arima_ac |>
   pivot_wider(names_from = Drug, values_from = MAPE)
 
 arima_mape
-```
 
 ### 3. ETS Models 
-```{r, fig.width=10, fig.height=6}
+
 ## ETS Models
 
 # Fit the models
@@ -424,10 +404,9 @@ ets_mape <- ets_ac |>
   pivot_wider(names_from = Drug, values_from = MAPE)
 
 ets_mape
-```
 
 ### 4. Prophet Models 
-```{r, fig.width=10, fig.height=6}
+
 ## Prophet Models
 
 # Fit the models
@@ -468,15 +447,14 @@ prophet_mape <- prophet_ac |>
   pivot_wider(names_from = Drug, values_from = MAPE)
 
 prophet_mape
-```
+
 
 ## b. Model Comparison
-```{r}
+
 ## comparison
 rmse_all <- rbind(base_rmse, arima_rmse, ets_rmse, prophet_rmse)
 rmse_all
 
 mape_all <- rbind(base_mape, arima_mape, ets_mape, prophet_mape)
 mape_all
-```
 
