@@ -186,21 +186,21 @@ In the following, weekly data is used to perform Moving average smoothing and ST
 ## Moving average smoothing
 
 # add the 52-MA and 52x2-MA to the data set
-df_drug_weekly <- df_drug_weekly |> 
+df_drug_monthly_fixed <- df_drug_monthly_fixed |> 
   group_by(Drug) |> 
   mutate(
-    MA_52 = slider::slide_dbl(Sales, mean, 
-                              .before = 25, .after = 26, .complete = TRUE),
-    MA_52x2 = slider::slide_dbl(MA_52, mean, 
-                              .before = 1, .after = 0, .complete = TRUE)
-    ) |> 
+    MA_12 = slider::slide_dbl(Sales, mean, 
+                              .before = 5, .after = 6, .complete = TRUE),
+    MA_12x2 = slider::slide_dbl(MA_12, mean, 
+                                .before = 1, .after = 0, .complete = TRUE)
+  ) |> 
   ungroup()
 
 # plot 52x2-MA
-df_drug_weekly |> 
+df_drug_monthly_fixed |> 
   autoplot(Sales) +
-  geom_line(aes(y = MA_52x2, color = "52-week Moving Average"), size =1) +
-  labs(title = "Weekly Sales of Drugs with 52-week Moving Average") +
+  geom_line(aes(y = MA_12x2, color = "12-month Moving Average"), size =1) +
+  labs(title = "Weekly Sales of Drugs with 12-month Moving Average") +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2) +
   theme(legend.position = "bottom")
 
@@ -210,37 +210,28 @@ df_drug_weekly |>
 ```{r, fig.width=10, fig.height=6}
 ## Decomposition
 
-# function for Classical additive decomposition
-CL_dcmp <- function(drug_code) {
-  df_drug_weekly |>
-    filter(Drug == drug_code) |>
-    model(
-      classical_decomposition(Sales, type = "additive")
-    ) |>
-    components() |>
-    autoplot() +
-    ggtitle(paste("Classical additive decomposition for Drug:", drug_code))
-}
-
-# apply Classical additive to all unique drug code
-lapply(unique(df_drug_weekly$Drug), CL_dcmp)
-
 # function for STL decomposition
-STL_dcmp <- function(drug_code) {
-  df_drug_weekly |>
-    filter(Drug == drug_code) |>
+STL_dcmp <- function(df, var, code) {
+  df |>
+    filter(get(var) == code) |>
     model(
-      STL(Sales ~ trend(window = 7) +
-            season(window = "periodic"),
+      STL(Sales ~ trend(window = 13) +
+            season(window = 21),
           robust = TRUE)
     ) |>
     components() |>
     autoplot() +
-    ggtitle(paste("STL Decomposition for Drug:", drug_code))
+    ggtitle(paste("STL Decomposition:", code))
 }
 
+STL_dcmp(df_drug_monthly_fixed, "Drug", "R06")
+
 # apply STL decomposition to all unique drug code
-lapply(unique(df_drug_weekly$Drug), STL_dcmp)
+lapply(unique(df_drug_monthly_fixed$Drug),
+       function(code) {
+         STL_dcmp(df=df_drug_monthly_fixed, var="Drug", code=code)
+       }
+)
 ```
 <span style="color:red;">Add some implications</span> from the decomposition.
 
