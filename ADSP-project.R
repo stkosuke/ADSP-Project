@@ -242,13 +242,13 @@ lapply(unique(df_drug_monthly_fixed$Drug),
 
 ## ACF and PACF
 # ACF plot
-df_drug_weekly |> 
+df_drug_monthly_fixed |> 
   ACF(Sales) |> 
   autoplot() +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2) 
 
 # PACF plot
-df_drug_weekly |> 
+df_drug_monthly_fixed |> 
   PACF(Sales) |> 
   autoplot() +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2) 
@@ -260,7 +260,7 @@ df_drug_weekly |>
 # function for ADF test
 ADF_test <- function(drug_code) {
   print(drug_code)
-  df_drug_weekly |>
+  df_drug_monthly_fixed |>
     filter(Drug == drug_code) |>
     pull(Sales) |> 
     tseries::adf.test() |> 
@@ -268,7 +268,7 @@ ADF_test <- function(drug_code) {
 }
 
 # apply ADF test to all unique drug code
-for (drug_code in unique(df_drug_weekly$Drug)) {
+for (drug_code in unique(df_drug_monthly_fixed$Drug)) {
   ADF_test(drug_code)
 }
 
@@ -277,12 +277,12 @@ for (drug_code in unique(df_drug_weekly$Drug)) {
 # 3. Forecasting
 
 ## Forecasting
-# use 52 weeks as a test set  
-train <- df_drug_weekly |>
-  filter_index("2014 W01" ~ "2018 W41")
+# use 12 months as a test set  
+train <- df_drug_monthly_fixed |>
+  filter_index("2014 Jan" ~ "2018 Oct")
 
-test <- df_drug_weekly |>
-  filter_index("2018 W42" ~ "2019 W41")
+test <- df_drug_monthly_fixed |>
+  filter_index("2018 Nov" ~ "2019 Oct")
 
 
 ## a. Fit the models
@@ -297,18 +297,18 @@ base_fit <- train |>
   )
 
 # Generate forecasts for 52 weeks
-base_fc <- base_fit |> forecast(h = 52)
+base_fc <- base_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
 base_fc |>
   autoplot(test, level = NULL) +
   autolayer(
-    filter_index(df_drug_weekly, "2018 W42" ~ .),
+    filter_index(df_drug_monthly_fixed, "2018 Nov" ~ .),
     colour = "black"
   ) +
   labs(
     y = "Sales",
-    title = "Base Forecasts for weekly Drug Sales (for test data)"
+    title = "Base Forecasts for monthly Drug Sales (for test data)"
   ) +
   guides(colour = guide_legend(title = "Forecast")) +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2)
@@ -341,18 +341,18 @@ arima_fit <- train |>
 arima_fit
 
 # Generate forecasts for 52 weeks
-arima_fc <- arima_fit |> forecast(h = 52)
+arima_fc <- arima_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
 arima_fc |>
   autoplot(test, level = NULL) +
   autolayer(
-    filter_index(df_drug_weekly, "2018 W42" ~ .),
+    filter_index(df_drug_monthly_fixed, "2018 Nov" ~ .),
     colour = "black"
   ) +
   labs(
     y = "Sales",
-    title = "ARIMA Forecasts for weekly Drug Sales (for test data)"
+    title = "ARIMA Forecasts for monthly Drug Sales (for test data)"
   ) +
   guides(colour = guide_legend(title = "Forecast")) +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2)
@@ -384,18 +384,18 @@ ets_fit <- train |>
 ets_fit
 
 # Generate forecasts for 52 weeks
-ets_fc <- ets_fit |> forecast(h = 52)
+ets_fc <- ets_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
 ets_fc |>
   autoplot(test, level = NULL) +
   autolayer(
-    filter_index(df_drug_weekly, "2018 W42" ~ .),
+    filter_index(df_drug_monthly_fixed, "2018 Nov" ~ .),
     colour = "black"
   ) +
   labs(
     y = "Sales",
-    title = "ETS Forecasts for weekly Drug Sales (for test data)"
+    title = "ETS Forecasts for monthly Drug Sales (for test data)"
   ) +
   guides(colour = guide_legend(title = "Forecast")) +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2)
@@ -427,18 +427,18 @@ prophet_fit <- train |>
 prophet_fit
 
 # Generate forecasts for 52 weeks
-prophet_fc <- prophet_fit |> forecast(h = 52)
+prophet_fc <- prophet_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
 prophet_fc |>
   autoplot(test, level = NULL) +
   autolayer(
-    filter_index(df_drug_weekly, "2018 W42" ~ .),
+    filter_index(df_drug_monthly_fixed, "2018 Nov" ~ .),
     colour = "black"
   ) +
   labs(
     y = "Sales",
-    title = "Prophet Forecasts for weekly Drug Sales (for test data)"
+    title = "Prophet Forecasts for monthly Drug Sales (for test data)"
   ) +
   guides(colour = guide_legend(title = "Forecast")) +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2)
