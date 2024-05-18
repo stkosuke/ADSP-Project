@@ -200,13 +200,35 @@ df_drug_monthly_fixed <- df_drug_monthly_fixed |>
 df_drug_monthly_fixed |> 
   autoplot(Sales) +
   geom_line(aes(y = MA_12x2, color = "12-month Moving Average"), size =1) +
-  labs(title = "Weekly Sales of Drugs with 12-month Moving Average") +
+  labs(title = "Monthly Sales of Drugs with 12-month Moving Average") +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2) +
   theme(legend.position = "bottom")
 
 ```
 
 
+```{r, fig.width=10, fig.height=6}
+# plot standardized moving average 
+df_drug_monthly_fixed <- df_drug_monthly_fixed |> 
+  group_by(Drug) |> 
+  mutate(stdl_MA = MA_12x2 / MA_12x2[as.character(Month) == "2014 Jul"]) |> 
+  ungroup()
+
+df_drug_monthly_fixed |> 
+  autoplot(stdl_MA) +
+  labs(title = "Standardized 12-month Moving Average",
+       y = "Standardized Monthly Sales") +
+  theme(legend.position = "bottom")
+```
+<br>  
+From the above plot, it can be seen that several drugs share a common trend.<br>  
+M01AB and M01AE gradually increased and peaked until mid-2016, then gradually decreased until 2017, and then stabilized thereafter.<br>
+<br>  
+N02BA and N02BE reach their peak in mid-2016, as M01AB and M01AE do, but then the slope of the decline becomes steeper after that than M01AB and M01AE . N02BE then begins to rise sharply in mid-2017, while N02BA continues to decline, with the slope of the decline moderating<br>  
+<br>  
+N05B and N05C both declined until mid-2015, then rose slightly, then declined again in mid-2017, and then continued to rise.<br> 
+<br>   
+R03 and R06 both increased to a peak in mid-2016 and then declined for a while, but began to rise again in mid-2017 and have been rising consistently since then.
 
 ```{r, fig.width=10, fig.height=6}
 ## Decomposition

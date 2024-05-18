@@ -187,8 +187,17 @@ df_drug_monthly_fixed |>
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2) +
   theme(legend.position = "bottom")
 
+# plot standardized moving average 
+df_drug_monthly_fixed <- df_drug_monthly_fixed |> 
+  group_by(Drug) |> 
+  mutate(stdl_MA = MA_12x2 / MA_12x2[as.character(Month) == "2014 Jul"]) |> 
+  ungroup()
 
-# <span style="color:red;">Add some implications</span> from the moving average smoothing.
+df_drug_monthly_fixed |> 
+  autoplot(stdl_MA) +
+  labs(title = "Standardized 12-month Moving Average",
+       y = "Standardized Monthly Sales") +
+  theme(legend.position = "bottom")
 
 ## Decomposition
 
