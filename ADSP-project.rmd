@@ -180,12 +180,12 @@ df_drug_hourly |>
 From the above, it can be estimated that this data has a one-year seasonality, and therefore, weekly or monthly data are candidates for data that can be utilized in the forecast. Since there are some missing data of unknown reason in the monthly data, it is appropriate to use the weekly data in this analysis.
 
 ## b. Moving average smoothing and Decomposition
-In the following, weekly data is used to perform Moving average smoothing and STL Decomposition.
+In the following, monthly data is used to perform Moving average smoothing and STL Decomposition.
 
 ```{r, fig.width=10, fig.height=6}
 ## Moving average smoothing
 
-# add the 52-MA and 52x2-MA to the data set
+# add the 12-MA and 12x2-MA to the data set
 df_drug_monthly_fixed <- df_drug_monthly_fixed |> 
   group_by(Drug) |> 
   mutate(
@@ -196,7 +196,7 @@ df_drug_monthly_fixed <- df_drug_monthly_fixed |>
   ) |> 
   ungroup()
 
-# plot 52x2-MA
+# plot 12x2-MA
 df_drug_monthly_fixed |> 
   autoplot(Sales) +
   geom_line(aes(y = MA_12x2, color = "12-month Moving Average"), size =1) +
@@ -205,7 +205,8 @@ df_drug_monthly_fixed |>
   theme(legend.position = "bottom")
 
 ```
-<span style="color:red;">Add some implications</span> from the moving average smoothing.
+
+
 
 ```{r, fig.width=10, fig.height=6}
 ## Decomposition
@@ -223,8 +224,6 @@ STL_dcmp <- function(df, var, code) {
     autoplot() +
     ggtitle(paste("STL Decomposition:", code))
 }
-
-STL_dcmp(df_drug_monthly_fixed, "Drug", "R06")
 
 # apply STL decomposition to all unique drug code
 lapply(unique(df_drug_monthly_fixed$Drug),
