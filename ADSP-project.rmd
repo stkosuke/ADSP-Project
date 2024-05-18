@@ -278,10 +278,14 @@ for (drug_code in unique(df_drug_monthly_fixed$Drug)) {
 ## Forecasting
 # use 12 months as a test set  
 train <- df_drug_monthly_fixed |>
-  filter_index("2014 Jan" ~ "2018 Oct")
+  filter_index("2014 Jan" ~ "2018 Sep")
 
 test <- df_drug_monthly_fixed |>
-  filter_index("2018 Nov" ~ "2019 Oct")
+  filter_index("2018 Oct" ~ "2019 Sep")
+
+# remove the data of the last month
+df_drug_monthly_fixed <- df_drug_monthly_fixed |> 
+  filter(as.character(Month) != "2019 Oct")
 ```
 
 ## a. Fit the models
