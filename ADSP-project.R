@@ -164,7 +164,7 @@ df_drug_hourly |>
 # From the above, it can be estimated that this data has a one-year seasonality, and therefore, weekly or monthly data are candidates for data that can be utilized in the forecast. Since there are some missing data of unknown reason in the monthly data, it is appropriate to use the weekly data in this analysis.
 
 ## b. Moving average smoothing and Decomposition
-# In the following, weekly data is used to perform Moving average smoothing and STL Decomposition.
+# In the following, monthly data is used to perform Moving average smoothing and STL Decomposition.
 
 ## Moving average smoothing
 
