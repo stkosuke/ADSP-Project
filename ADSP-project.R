@@ -166,9 +166,13 @@ df_drug_hourly |>
 ## b. Moving average smoothing and Decomposition
 # In the following, monthly data is used to perform Moving average smoothing and STL Decomposition.
 
+# remove the data of the last month
+df_drug_monthly_fixed <- df_drug_monthly_fixed |> 
+  filter(as.character(Month) != "2019 Oct")
+
 ## Moving average smoothing
 
-# add the 52-MA and 52x2-MA to the data set
+# add the 12-MA and 12x2-MA to the data set
 df_drug_monthly_fixed <- df_drug_monthly_fixed |> 
   group_by(Drug) |> 
   mutate(
@@ -179,11 +183,11 @@ df_drug_monthly_fixed <- df_drug_monthly_fixed |>
   ) |> 
   ungroup()
 
-# plot 52x2-MA
+# plot 12x2-MA
 df_drug_monthly_fixed |> 
   autoplot(Sales) +
   geom_line(aes(y = MA_12x2, color = "12-month Moving Average"), size =1) +
-  labs(title = "Weekly Sales of Drugs with 12-month Moving Average") +
+  labs(title = "Monthly Sales of Drugs with 12-month Moving Average") +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2) +
   theme(legend.position = "bottom")
 
@@ -233,8 +237,6 @@ STL_dcmp <- function(df, var, code) {
     autoplot() +
     ggtitle(paste("STL Decomposition:", code))
 }
-
-STL_dcmp(df_drug_monthly_fixed, "Drug", "R06")
 
 # apply STL decomposition to all unique drug code
 lapply(unique(df_drug_monthly_fixed$Drug),
@@ -292,10 +294,6 @@ train <- df_drug_monthly_fixed |>
 
 test <- df_drug_monthly_fixed |>
   filter_index("2018 Oct" ~ "2019 Sep")
-
-# remove the data of the last month
-df_drug_monthly_fixed <- df_drug_monthly_fixed |> 
-  filter(as.character(Month) != "2019 Oct")
 
 ## a. Fit the models
 ### 1. Baseline Models (Mean, Naïve and Seasonal naïve)
