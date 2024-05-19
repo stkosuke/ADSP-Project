@@ -182,6 +182,13 @@ From the above, it can be estimated that this data has a one-year seasonality, a
 ## b. Moving average smoothing and Decomposition
 In the following, monthly data is used to perform Moving average smoothing and STL Decomposition.
 
+```{r}
+# remove the data of the last month
+df_drug_monthly_fixed <- df_drug_monthly_fixed |> 
+  filter(as.character(Month) != "2019 Oct")
+```
+
+
 ```{r, fig.width=10, fig.height=6}
 ## Moving average smoothing
 

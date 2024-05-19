@@ -256,12 +256,14 @@ lapply(unique(df_drug_monthly_fixed$Drug),
 df_drug_monthly_fixed |> 
   ACF(Sales) |> 
   autoplot() +
+  labs(title = "ACF for the monthly sales") +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2) 
 
 # PACF plot
 df_drug_monthly_fixed |> 
   PACF(Sales) |> 
   autoplot() +
+  labs(title = "PACF for the monthly sales") +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2) 
 
 # <span style="color:red;">Add some implications</span> .
