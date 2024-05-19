@@ -380,8 +380,24 @@ base_mape
 ## ARIMA Models
 
 # Fit the models
-arima_fit <- train |>
+arima_fit_sta <- train |>
+  filter(Drug %in% c("N02BE", "R03", "R06")) |> 
   model(ARIMA(Sales))
+
+arima_fit_sta
+
+arima_fit_non_sta <- train |>
+  filter(!Drug %in% c("N02BE", "R03", "R06")) |> 
+  model(ARIMA(Sales ~ pdq(d=1:2)))
+
+arima_fit_non_sta
+
+# combine the result
+names(arima_fit_non_sta) <- names(arima_fit_sta)
+
+arima_fit <- 
+  rbind(arima_fit_sta, arima_fit_non_sta) |> 
+  arrange(Drug)
 
 arima_fit
 
