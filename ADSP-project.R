@@ -313,17 +313,15 @@ base_fc <- base_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
 base_fc |>
-  autoplot(test, level = NULL) +
-  autolayer(
-    filter_index(df_drug_monthly_fixed, "2018 Nov" ~ .),
-    colour = "black"
-  ) +
+  autoplot(test, size=1, level = NULL) +
+  autolayer(train, colour = "black") +
   labs(
     y = "Sales",
     title = "Base Forecasts for monthly Drug Sales (for test data)"
   ) +
   guides(colour = guide_legend(title = "Forecast")) +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2)
+
 
 # calculate accuracy
 base_ac <- accuracy(base_fc, test)
@@ -357,11 +355,8 @@ arima_fc <- arima_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
 arima_fc |>
-  autoplot(test, level = NULL) +
-  autolayer(
-    filter_index(df_drug_monthly_fixed, "2018 Nov" ~ .),
-    colour = "black"
-  ) +
+  autoplot(test, size=1, level = NULL) +
+  autolayer(train, colour = "black") +
   labs(
     y = "Sales",
     title = "ARIMA Forecasts for monthly Drug Sales (for test data)"
@@ -400,17 +395,15 @@ ets_fc <- ets_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
 ets_fc |>
-  autoplot(test, level = NULL) +
-  autolayer(
-    filter_index(df_drug_monthly_fixed, "2018 Nov" ~ .),
-    colour = "black"
-  ) +
+  autoplot(test, size=1, level = NULL) +
+  autolayer(train, colour = "black") +
   labs(
     y = "Sales",
     title = "ETS Forecasts for monthly Drug Sales (for test data)"
   ) +
   guides(colour = guide_legend(title = "Forecast")) +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2)
+
 
 # calculate accuracy
 ets_ac <- accuracy(ets_fc, test)
@@ -443,11 +436,8 @@ prophet_fc <- prophet_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
 prophet_fc |>
-  autoplot(test, level = NULL) +
-  autolayer(
-    filter_index(df_drug_monthly_fixed, "2018 Nov" ~ .),
-    colour = "black"
-  ) +
+  autoplot(test, size=1, level = NULL) +
+  autolayer(train, colour = "black") +
   labs(
     y = "Sales",
     title = "Prophet Forecasts for monthly Drug Sales (for test data)"
