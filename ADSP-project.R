@@ -461,7 +461,6 @@ prophet_mape <- prophet_ac |>
 
 prophet_mape
 
-
 ## b. Model Comparison
 
 ## comparison
