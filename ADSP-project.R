@@ -289,13 +289,15 @@ for (drug_code in unique(df_drug_monthly_fixed$Drug)) {
 
 # function for differencing
 Diff_ts <- function(drug_code) {
+  # differencing and ADF test
   df_drug_monthly_fixed |>
     filter(Drug == drug_code) |>
     pull(Sales) |> 
     diff() |> 
     tseries::adf.test() |> 
     print()
-
+  
+  # plot the differenced data
   df_drug_monthly_fixed |> 
     filter(Drug == drug_code) |>
     mutate(Diff = Sales - lag(Sales)) |> 
