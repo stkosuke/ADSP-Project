@@ -285,7 +285,40 @@ for (drug_code in unique(df_drug_monthly_fixed$Drug)) {
   ADF_test(drug_code)
 }
 
-# <span style="color:red;">Add some implications</span> .
+# make them stationary
+
+# function for differencing
+Diff_ts <- function(drug_code) {
+  df_drug_monthly_fixed |>
+    filter(Drug == drug_code) |>
+    pull(Sales) |> 
+    diff() |> 
+    tseries::adf.test() |> 
+    print()
+
+  df_drug_monthly_fixed |> 
+    filter(Drug == drug_code) |>
+    mutate(Diff = Sales - lag(Sales)) |> 
+    filter(!is.na(Diff)) |> 
+    ggplot(aes(x = Month, y = Diff)) +
+    geom_line() +
+    labs(title = paste("Monthly Sales Difference for", drug_code))
+}
+
+# M01AB (differenced)
+Diff_ts("M01AB")
+
+# M01AE (differenced)
+Diff_ts("M01AE")
+
+# N02BA (differenced)
+Diff_ts("N02BA")
+
+# N05B(differenced)
+Diff_ts("N05B")
+
+# N05B(differenced)
+Diff_ts("N05C")
 
 # 3. Forecasting
 
