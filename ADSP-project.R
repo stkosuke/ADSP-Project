@@ -377,6 +377,7 @@ base_fc |>
     title = "Base Forecasts for monthly Drug Sales"
   ) +
   guides(colour = guide_legend(title = "Forecast")) +
+  theme(legend.position = "bottom") +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2)
 
 # Mean including confidence interval
