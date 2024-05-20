@@ -414,13 +414,14 @@ base_mape
 
 ## ARIMA Models
 
-# Fit the models
+# Fit the models for stationary data
 arima_fit_sta <- train |>
   filter(Drug %in% c("N02BE", "R03", "R06")) |> 
   model(ARIMA(Sales))
 
 arima_fit_sta
 
+# Fit the models for non-stationary data
 arima_fit_non_sta <- train |>
   filter(!Drug %in% c("N02BE", "R03", "R06")) |> 
   model(ARIMA(Sales ~ pdq(d=1:2)))
@@ -441,11 +442,11 @@ arima_fc <- arima_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
 arima_fc |>
-  autoplot(test, size=1, level = NULL) +
+  autoplot(test, size=1, level = c(85,90)) +
   autolayer(train, colour = "black") +
   labs(
     y = "Sales",
-    title = "ARIMA Forecasts for monthly Drug Sales (for test data)"
+    title = "ARIMA Forecasts for monthly Drug Sales"
   ) +
   guides(colour = guide_legend(title = "Forecast")) +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2)
