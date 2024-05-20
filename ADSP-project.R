@@ -478,10 +478,12 @@ arima_fc |>
 
 # check residuals
 for (drug in unique_drugs) {
-  arima_fit |> 
+  p <- arima_fit |> 
     filter(Drug == drug) |> 
     gg_tsresiduals() +
     ggtitle(paste("Residuals for Drug", drug))
+  
+  print(p)
 }
 
 # calculate accuracy
@@ -524,6 +526,15 @@ ets_fc |>
   guides(colour = guide_legend(title = "Forecast")) +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2)
 
+# check residuals
+for (drug in unique_drugs) {
+  p <- ets_fit |> 
+    filter(Drug == drug) |> 
+    gg_tsresiduals() +
+    ggtitle(paste("Residuals for Drug", drug))
+  
+  print(p)
+}
 
 # calculate accuracy
 ets_ac <- accuracy(ets_fc, test)
@@ -564,6 +575,16 @@ prophet_fc |>
   ) +
   guides(colour = guide_legend(title = "Forecast")) +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2)
+
+# check residuals
+for (drug in unique_drugs) {
+  p <- prophet_fit |> 
+    filter(Drug == drug) |> 
+    gg_tsresiduals() +
+    ggtitle(paste("Residuals for Drug", drug))
+  
+  print(p)
+}
 
 # calculate accuracy
 prophet_ac <- accuracy(prophet_fc, test)
