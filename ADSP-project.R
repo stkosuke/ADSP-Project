@@ -548,6 +548,116 @@ prophet_mape <- prophet_ac |>
 
 prophet_mape
 
+### 5. LSTM
+
+library(keras)
+library(tensorflow)
+
+prepare_data_for_lstm <- function(df, look_back = 1) {
+  df <- df %>%
+    group_by(Drug) %>%
+    mutate(Sales_scaled = scale(Sales)) %>%
+    ungroup()
+  
+  data_list <- list()
+  
+  for (drug in unique(df$Drug)) {
+    drug_data <- df %>% filter(Drug == drug)
+    sales_scaled <- drug_data$Sales_scaled
+    
+    x <- list()
+    y <- list()
+    
+    for (i in seq(look_back, length(sales_scaled) - 1)) {
+      x[[i - look_back + 1]] <- sales_scaled[(i - look_back + 1):i]
+      y[[i - look_back + 1]] <- sales_scaled[i + 1]
+    }
+    
+    data_list[[drug]] <- list(x = array(unlist(x), dim = c(length(x), look_back, 1)),
+                              y = array(unlist(y), dim = c(length(y), 1)))
+  }
+  
+  return(data_list)
+}
+
+calculate_mse <- function(y_true, y_pred) {
+  mean((y_true - y_pred)^2)
+}
+
+calculate_mape <- function(y_true, y_pred) {
+  mean(abs((y_true - y_pred) / y_true)) * 100
+}
+
+train_lstm <- function(data, epochs = 100, batch_size = 32, look_back = 1) {
+  model <- keras_model_sequential() %>%
+    layer_lstm(units = 50, return_sequences = TRUE, input_shape = c(look_back, 1)) %>%
+    layer_lstm(units = 50) %>%
+    layer_dense(units = 1)
+  
+  model %>% compile(
+    loss = 'mean_squared_error',
+    optimizer = 'adam'
+  )
+  
+  history <- model %>% fit(
+    x = data$x,
+    y = data$y,
+    epochs = epochs,
+    batch_size = batch_size,
+    validation_split = 0.2,
+    verbose = 2
+  )
+  
+  predictions <- model %>% predict(data$x)
+  
+  mse <- calculate_mse(data$y, predictions)
+  mape <- calculate_mape(data$y, predictions)
+  
+  return(list(model = model, history = history, mse = mse, mape = mape))
+}
+
+data_list <- prepare_data_for_lstm(df_drug_weekly)
+
+models <- list()
+for (drug in names(data_list)) {
+  cat("Training model for drug:", drug, "\n")
+  models[[drug]] <- train_lstm(data_list[[drug]])
+}
+
+for (drug in names(models)) {
+  cat("Drug:", drug, "\n")
+  cat("MSE:", models[[drug]]$mse, "\n")
+  cat("MAPE:", models[[drug]]$mape, "%\n\n")
+}
+
+for (selected_drug in names(data_list)) {
+  actual_data <- data_list[[selected_drug]]
+  if (!is.null(models[[selected_drug]])) {
+    model <- models[[selected_drug]]$model
+    predictions <- predict(model, actual_data$x)
+    
+    results_df <- data.frame(
+      Time = 1:length(actual_data$y),
+      Actual = actual_data$y,
+      Predicted = predictions
+    )
+    
+    p <- ggplot(results_df, aes(x = Time)) +
+      geom_line(aes(y = Actual, colour = "Actual"), size = 1.2) +
+      geom_line(aes(y = Predicted, colour = "Predicted"), size = 1.2, linetype = "dashed") +
+      labs(title = paste("Actual vs Predicted Values for", selected_drug),
+           x = "Time", y = "Value") +
+      scale_colour_manual(values = c("Actual" = "blue", "Predicted" = "red"),
+                          name = "",
+                          labels = c("Actual", "Predicted")) +
+      theme_minimal()
+    
+    print(p)
+  } else {
+    print(paste("No model available for", selected_drug))
+  }
+}
+
 ## b. Model Comparison
 
 ## comparison
