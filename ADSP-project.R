@@ -48,6 +48,8 @@ df_drug_monthly_fixed <- df_drug_daily |>
   summarise(Sales = sum(Sales, na.rm = TRUE), .groups = 'drop') |> 
   as_tsibble(index = Month, key = Drug) 
 
+unique_drugs <- unique(df_drug_monthly_fixed$Drug)
+
 
 # 2. Exploratory Data Analysis
 ## a. Comparison among the data sets
@@ -240,7 +242,7 @@ CL_dcmp <- function(df, var, code) {
 }
 
 # apply Classical additive to all unique drug code
-lapply(unique(df_drug_monthly_fixed$Drug),
+lapply(unique_drugs,
        function(code) {
          CL_dcmp(df=df_drug_monthly_fixed, var="Drug", code=code)
          }
@@ -261,7 +263,7 @@ STL_dcmp <- function(df, var, code) {
 }
 
 # apply STL decomposition to all unique drug code
-lapply(unique(df_drug_monthly_fixed$Drug),
+lapply(unique_drugs,
        function(code) {
          STL_dcmp(df=df_drug_monthly_fixed, var="Drug", code=code)
        }
@@ -303,7 +305,7 @@ ADF_test <- function(drug_code) {
 }
 
 # apply ADF test to all unique drug code
-for (drug_code in unique(df_drug_monthly_fixed$Drug)) {
+for (drug_code in unique_drugs) {
   ADF_test(drug_code)
 }
 
@@ -473,6 +475,14 @@ arima_fc |>
   ) +
   guides(colour = guide_legend(title = "Forecast")) +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2)
+
+# check residuals
+for (drug in unique_drugs) {
+  arima_fit |> 
+    filter(Drug == drug) |> 
+    gg_tsresiduals() +
+    ggtitle(paste("Residuals for Drug", drug))
+}
 
 # calculate accuracy
 arima_ac <- accuracy(arima_fc, test)
