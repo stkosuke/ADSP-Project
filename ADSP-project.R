@@ -197,11 +197,33 @@ df_drug_monthly_fixed <- df_drug_monthly_fixed |>
   mutate(stdl_MA = MA_12x2 / MA_12x2[as.character(Month) == "2014 Jul"]) |> 
   ungroup()
 
+# all in one plot
 df_drug_monthly_fixed |> 
-  autoplot(stdl_MA) +
+  autoplot(stdl_MA, size =1) +
   labs(title = "Standardized 12-month Moving Average",
        y = "Standardized Monthly Sales") +
   theme(legend.position = "bottom")
+
+# M01AB, N02BA, M01AE and N02BE
+df_drug_monthly_fixed |> 
+  autoplot(stdl_MA, size =0.1) +
+  labs(title = "Standardized 12-month Moving Average",
+       y = "Standardized Monthly Sales") +
+  theme(legend.position = "bottom") +
+  geom_line(data = df_drug_monthly_fixed |>  
+              filter(Drug %in% c("M01AB", "N02BA", "M01AE", "N02BE")),
+            aes(x = Month, y = stdl_MA, color = Drug), size = 1)
+
+# N05B, N05C, R03 and R06
+df_drug_monthly_fixed |> 
+  autoplot(stdl_MA, size =0.1) +
+  labs(title = "Standardized 12-month Moving Average",
+       y = "Standardized Monthly Sales") +
+  theme(legend.position = "bottom") +
+  geom_line(data = df_drug_monthly_fixed |>  
+              filter(Drug %in% c("N05B", "N05C", "R03", "R06")),
+            aes(x = Month, y = stdl_MA, color = Drug), size = 1)
+
 
 ## Decomposition
 
