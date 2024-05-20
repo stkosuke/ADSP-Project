@@ -352,11 +352,46 @@ base_fc |>
   autolayer(train, colour = "black") +
   labs(
     y = "Sales",
-    title = "Base Forecasts for monthly Drug Sales (for test data)"
+    title = "Base Forecasts for monthly Drug Sales"
   ) +
   guides(colour = guide_legend(title = "Forecast")) +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2)
 
+# Mean including confidence interval
+base_fc |>
+  filter(.model == "Mean") |> 
+  autoplot(test, size=1,  colour = "red", level = c(85,90)) +
+  autolayer(train, colour = "black") +
+  labs(
+    y = "Sales",
+    title = "Mean Forecasts for monthly Drug Sales (including interval)"
+  ) +
+  guides(colour = guide_legend(title = "Forecast")) +
+  facet_wrap(vars(Drug), scales = "free_y", ncol = 2) 
+
+# Naive including confidence interval
+base_fc |>
+  filter(.model == "Naïve") |> 
+  autoplot(test, size=1, colour = "#006400", level = c(85,90)) +
+  autolayer(train, colour = "black") +
+  labs(
+    y = "Sales",
+    title = "Naïve Forecasts for monthly Drug Sales (including interval)"
+  ) +
+  guides(colour = guide_legend(title = "Forecast")) +
+  facet_wrap(vars(Drug), scales = "free_y", ncol = 2)
+
+# Seasonal naïve including confidence interval
+base_fc |>
+  filter(.model == "Seasonal naïve") |> 
+  autoplot(test, size=1, level = c(85,90)) +
+  autolayer(train, colour = "black") +
+  labs(
+    y = "Sales",
+    title = "Seasonal naïve Forecasts for monthly Drug Sales (including interval)"
+  ) +
+  guides(colour = guide_legend(title = "Forecast")) +
+  facet_wrap(vars(Drug), scales = "free_y", ncol = 2)
 
 # calculate accuracy
 base_ac <- accuracy(base_fc, test)
