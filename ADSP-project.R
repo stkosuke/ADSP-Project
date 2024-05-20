@@ -482,7 +482,7 @@ ets_fc <- ets_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
 ets_fc |>
-  autoplot(test, size=1, level = NULL) +
+  autoplot(test, size=1, level = c(85,90)) +
   autolayer(train, colour = "black") +
   labs(
     y = "Sales",
