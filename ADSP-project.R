@@ -436,7 +436,7 @@ arima_fit <-
 
 arima_fit
 
-# Generate forecasts for 52 weeks
+# Generate forecasts for 12 months
 arima_fc <- arima_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
@@ -476,7 +476,7 @@ ets_fit <- train |>
 
 ets_fit
 
-# Generate forecasts for 52 weeks
+# Generate forecasts for 12 months
 ets_fc <- ets_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
@@ -517,7 +517,7 @@ prophet_fit <- train |>
 
 prophet_fit
 
-# Generate forecasts for 52 weeks
+# Generate forecasts for 12 months
 prophet_fc <- prophet_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
