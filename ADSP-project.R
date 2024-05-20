@@ -343,7 +343,7 @@ base_fit <- train |>
     `Seasonal naïve` = SNAIVE(Sales)
   )
 
-# Generate forecasts for 52 weeks
+# Generate forecasts for 12 months
 base_fc <- base_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values

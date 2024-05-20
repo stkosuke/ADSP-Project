@@ -261,7 +261,6 @@ lapply(unique(df_drug_monthly_fixed$Drug),
        }
 )
 ```
-<span style="color:red;">Add some implications</span> from the decomposition.
 
 ## c. Stationary Analysis
 In the following, weekly data is used.
@@ -280,7 +279,6 @@ df_drug_monthly_fixed |>
   autoplot() +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2) 
 ```
-<span style="color:red;">Add some implications</span> .
 
 ## d. ADF test
 ```{r, warning=FALSE}
@@ -299,7 +297,47 @@ for (drug_code in unique(df_drug_monthly_fixed$Drug)) {
   ADF_test(drug_code)
 }
 ```
-<span style="color:red;">Add some implications</span> .
+<br>   
+Augmented Dickey-Fuller (ADF) test have shown that N02BE, R03 and R06 in the series were stationary, with maximum confidence.
+
+```{r}
+# make the other data stationary
+
+# function for differencing
+Diff_ts <- function(drug_code) {
+  # differencing and ADF test
+  df_drug_monthly_fixed |>
+    filter(Drug == drug_code) |>
+    pull(Sales) |> 
+    diff() |> 
+    tseries::adf.test() |> 
+    print()
+  
+  # plot the differenced data
+  df_drug_monthly_fixed |> 
+    filter(Drug == drug_code) |>
+    mutate(Diff = Sales - lag(Sales)) |> 
+    filter(!is.na(Diff)) |> 
+    ggplot(aes(x = Month, y = Diff)) +
+    geom_line() +
+    labs(title = paste("Monthly Sales Difference for", drug_code))
+}
+
+# M01AB (differenced)
+Diff_ts("M01AB")
+
+# M01AE (differenced)
+Diff_ts("M01AE")
+
+# N02BA (differenced)
+Diff_ts("N02BA")
+
+# N05B(differenced)
+Diff_ts("N05B")
+
+# N05B(differenced)
+Diff_ts("N05C")
+```
 
 # 3. Forecasting
 ```{r, warning=FALSE}
@@ -310,10 +348,6 @@ train <- df_drug_monthly_fixed |>
 
 test <- df_drug_monthly_fixed |>
   filter_index("2018 Oct" ~ "2019 Sep")
-
-# remove the data of the last month
-df_drug_monthly_fixed <- df_drug_monthly_fixed |> 
-  filter(as.character(Month) != "2019 Oct")
 ```
 
 ## a. Fit the models
@@ -327,22 +361,20 @@ base_fit <- train |>
     `Seasonal naïve` = SNAIVE(Sales)
   )
 
-# Generate forecasts for 52 weeks
+# Generate forecasts for 12 months
 base_fc <- base_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
 base_fc |>
-  autoplot(test, level = NULL) +
-  autolayer(
-    filter_index(df_drug_monthly_fixed, "2018 Nov" ~ .),
-    colour = "black"
-  ) +
+  autoplot(test, size=1, level = NULL) +
+  autolayer(train, colour = "black") +
   labs(
     y = "Sales",
     title = "Base Forecasts for monthly Drug Sales (for test data)"
   ) +
   guides(colour = guide_legend(title = "Forecast")) +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2)
+
 
 # calculate accuracy
 base_ac <- accuracy(base_fc, test)
@@ -371,7 +403,7 @@ arima_fit <- train |>
 
 arima_fit
 
-# Generate forecasts for 52 weeks
+# Generate forecasts for 12 months
 arima_fc <- arima_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
@@ -415,7 +447,7 @@ ets_fit <- train |>
 
 ets_fit
 
-# Generate forecasts for 52 weeks
+# Generate forecasts for 12 months
 ets_fc <- ets_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
@@ -459,7 +491,7 @@ prophet_fit <- train |>
 
 prophet_fit
 
-# Generate forecasts for 52 weeks
+# Generate forecasts for 12 months
 prophet_fc <- prophet_fit |> forecast(h = 12)
 
 # Plot forecasts against actual values
