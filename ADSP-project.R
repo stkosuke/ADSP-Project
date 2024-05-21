@@ -19,7 +19,7 @@ df_drug_monthly <- read_csv(file.path(repo_path, "salesmonthly.csv"))
 df_drug_hourly <- df_drug_hourly |> 
   mutate(Datetime = mdy_hm(datum)) |>
   select(-datum, -Year, -Month, -Hour, -`Weekday Name`) |> 
-  as_tsibble(index = Datetime)　|> 
+  as_tsibble(index = Datetime) |> 
   pivot_longer(cols = -Datetime, names_to = "Drug", values_to = "Sales")
 
 df_drug_daily <- df_drug_daily |> 
@@ -269,9 +269,6 @@ lapply(unique_drugs,
        }
 )
 
-
-# <span style="color:red;">Add some implications</span> from the decomposition.
-
 ## c. Stationary Analysis
 # In the following, weekly data is used.
 
@@ -289,8 +286,6 @@ df_drug_monthly_fixed |>
   autoplot() +
   labs(title = "PACF for the monthly sales") +
   facet_wrap(vars(Drug), scales = "free_y", ncol = 2) 
-
-# <span style="color:red;">Add some implications</span> .
 
 ## d. ADF test
 
@@ -486,6 +481,10 @@ for (drug in unique_drugs) {
   print(p)
 }
 
+# ljung_box test
+augment(arima_fit) |>
+  features(.innov, ljung_box, lag = 36)
+
 # calculate accuracy
 arima_ac <- accuracy(arima_fc, test)
 
@@ -536,6 +535,10 @@ for (drug in unique_drugs) {
   print(p)
 }
 
+# ljung_box test
+augment(ets_fit) |>
+  features(.innov, ljung_box, lag = 36)
+
 # calculate accuracy
 ets_ac <- accuracy(ets_fc, test)
 
@@ -585,6 +588,10 @@ for (drug in unique_drugs) {
   
   print(p)
 }
+
+# ljung_box test
+augment(prophet_fit) |>
+  features(.innov, ljung_box, lag = 36)
 
 # calculate accuracy
 prophet_ac <- accuracy(prophet_fc, test)

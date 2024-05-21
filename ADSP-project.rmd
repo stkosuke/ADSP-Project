@@ -500,6 +500,10 @@ for (drug in unique_drugs) {
   print(p)
 }
 
+# ljung_box test
+augment(arima_fit) |>
+  features(.innov, ljung_box, lag = 36)
+
 # calculate accuracy
 arima_ac <- accuracy(arima_fc, test)
 
@@ -551,6 +555,10 @@ for (drug in unique_drugs) {
   print(p)
 }
 
+# ljung_box test
+augment(ets_fit) |>
+  features(.innov, ljung_box, lag = 36)
+
 # calculate accuracy
 ets_ac <- accuracy(ets_fc, test)
 
@@ -601,6 +609,10 @@ for (drug in unique_drugs) {
   
   print(p)
 }
+
+# ljung_box test
+augment(prophet_fit) |>
+  features(.innov, ljung_box, lag = 36)
 
 # calculate accuracy
 prophet_ac <- accuracy(prophet_fc, test)
