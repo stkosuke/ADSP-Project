@@ -60,6 +60,8 @@ df_drug_monthly_fixed <- df_drug_daily |>
   group_by(Month, Drug) |> 
   summarise(Sales = sum(Sales, na.rm = TRUE), .groups = 'drop') |> 
   as_tsibble(index = Month, key = Drug) 
+
+unique_drugs <- unique(df_drug_monthly_fixed$Drug)
 ```
 
 # 2. Exploratory Data Analysis
